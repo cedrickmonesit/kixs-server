@@ -3,6 +3,25 @@ const members = require("./members"); //requiring the members.js file
 
 const app = express();
 
+const {
+  initializeApp,
+  applicationDefault,
+  cert,
+} = require("firebase-admin/app");
+const {
+  getFirestore,
+  Timestamp,
+  FieldValue,
+} = require("firebase-admin/firestore");
+
+const serviceAccount = require("./keys/kixs-1d4f3-9113c3eb4bdd.json"); // service account for athentication access
+
+initializeApp({
+  credential: cert(serviceAccount),
+});
+
+const db = getFirestore();
+
 const PORT = process.env.PORT || 4000; // process.env.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
 app.use(express.json()); // allows us to use Express.js built in body parser
@@ -30,5 +49,17 @@ app.delete("/:id", (request, response) => {
   );
   response.status(200).json({ members: filteredMembers });
 });
+
+const docRef = db.collection("users").doc("alovelace"); // setting collection and document in firestore database
+
+let addData = async () => {
+  await docRef.set({
+    first: "Ada",
+    last: "Lovelace",
+    born: 1815,
+  });
+};
+
+addData();
 
 app.listen(PORT, () => console.log(`Server runnong ${PORT}`));

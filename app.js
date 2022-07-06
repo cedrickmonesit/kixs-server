@@ -51,7 +51,7 @@ app.get("/", (request, response) => {
   response.send(ads);
 });
 
-// Express middlware that will validate access tokens
+
 const jwtCheck = jwt({
   secret: jwks.expressJwtSecret({
         cache: true,
@@ -59,20 +59,14 @@ const jwtCheck = jwt({
         jwksRequestsPerMinute: 5,
         jwksUri: 'https://dev-uuh22p8d.us.auth0.com/.well-known/jwks.json'
   }),
-
-  // Validate the audience and the issuer.
-  audience: 'https://kixs-api', // API_IDENTIFIER from Auth0
-  issuer: 'https://dev-uuh22p8d.us.auth0.com/', // https://<AUTH0_DOMAIN>/' from Auth0
-  algorithms: ['RS256'] // keep set to RS256
+  audience: 'https://kixs-api',
+  issuer: 'https://dev-uuh22p8d.us.auth0.com/',
+  algorithms: ['RS256']
 });
 
-app.use(jwtCheck); // all endpoints after jwtCheck will be secured all endpoints before jwtCheck will be public with no security
+app.use(jwtCheck);
 
 app.post("/", (request, response) => {
-  console.log(request);
-  response.status(200).json("Request successful");
-
-  /*
   const newMember = {
     id: request.body.id,
     name: request.body.name,
@@ -80,7 +74,6 @@ app.post("/", (request, response) => {
   };
   members.push(newMember); // Add new member to members array
   response.status(200).json({ members: members }); // send back to client to show new members list
-  */
 });
 
 app.delete("/:id", (request, response) => {

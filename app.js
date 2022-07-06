@@ -67,13 +67,8 @@ const jwtCheck = jwt({
 app.use(jwtCheck);
 
 app.post("/", (request, response) => {
-  const newMember = {
-    id: request.body.id,
-    name: request.body.name,
-    age: request.body.age,
-  };
-  members.push(newMember); // Add new member to members array
-  response.status(200).json({ members: members }); // send back to client to show new members list
+  console.log(request);
+  response.status(200).json("Request successful");
 });
 
 app.delete("/:id", (request, response) => {
@@ -97,4 +92,4 @@ let addData = async () => {
 addData();
 */
 
-app.listen(PORT, () => console.log(`Server runnong ${PORT}`));
+app.listen(PORT, () => console.log(`Server running ${PORT}`));

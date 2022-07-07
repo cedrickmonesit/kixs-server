@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const guard = require('express-jwt-permissions')(); // makes it easy to setup permissions and check them as middleware
 
 const app = express();
 
@@ -53,33 +54,32 @@ app.get("/", (request, response) => {
 
 
 const jwtCheck = jwt({
-  secret: jwks.expressJwtSecret({
+  secret: jwks.expressJwtSecret({ // verifies if token has this public secret
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
         jwksUri: 'https://dev-uuh22p8d.us.auth0.com/.well-known/jwks.json'
   }),
-  audience: 'https://kixs-api',
-  issuer: 'https://dev-uuh22p8d.us.auth0.com/',
+  audience: 'https://kixs-api', // verifies that the token is for this audience
+  issuer: 'https://dev-uuh22p8d.us.auth0.com/', // verifies that the token is from this issuer
   algorithms: ['RS256']
 });
 
-app.use(jwtCheck);
+app.use(jwtCheck); // using jwtCheck as middleware
 
-app.post("/", (request, response) => {
+// guard.check middleware checks an array of scopes that has to be verified anyone who accesses this endpoints 
+app.post("/", guard.check(['read:challenges']),(request, response) => {
   console.log(request);
   response.status(200).json("Request successful");
 });
 
 app.delete("/:id", (request, response) => {
-  const filteredMembers = members.filter(
-    (member) => member.id !== parseInt(request.params.id), //filters member by id if member.id is not the request member id add it to the filteredMembers
-  );
   response.status(200).json({ members: filteredMembers });
 });
 
 const docRef = db.collection("users").doc("alovelace"); // setting collection and document in firestore database
 
+// setting document with values
 let addData = async () => {
   await docRef.set({
     first: "Ada",

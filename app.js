@@ -1,10 +1,8 @@
 const express = require("express");
-const members = require("./members"); //requiring the members.js file
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const guard = require('express-jwt-permissions')(); // makes it easy to setup permissions and check them as middleware
 
 const app = express();
 
@@ -14,11 +12,13 @@ const { expressjwt: jwt } = require('express-jwt');
 
 const jwks = require('jwks-rsa');
 
+const jwtScope = require('express-jwt-scope');// makes it easy to setup scope and check them as middleware
+
 const { initializeApp,applicationDefault,cert, } = require("firebase-admin/app");
 
 const { getFirestore,Timestamp,FieldValue, } = require("firebase-admin/firestore");
 
-const serviceAccount = require("./keys/kixs-1d4f3-9113c3eb4bdd.json"); // service account for athentication access
+const serviceAccount = require("./keys/kixs-1d4f3-9113c3eb4bdd.json"); // service account for firestore athentication access
 
 // initialize firestore
 initializeApp({
@@ -68,7 +68,7 @@ const jwtCheck = jwt({
 app.use(jwtCheck); // using jwtCheck as middleware
 
 // guard.check middleware checks an array of scopes that has to be verified anyone who accesses this endpoints 
-app.post("/", guard.check(['read:challenges']),(request, response) => {
+app.get("/members", jwtScope('read:members'),(request, response) => {
   console.log(request);
   response.status(200).json("Request successful");
 });

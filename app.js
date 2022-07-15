@@ -67,10 +67,36 @@ const jwtCheck = jwt({
 
 app.use(jwtCheck); // using jwtCheck as middleware
 
-// guard.check middleware checks an array of scopes that has to be verified anyone who accesses this endpoints 
+// jwtScope middleware checks an array of scopes that has to be verified anyone who accesses this endpoints 
 app.get("/members", jwtScope('read:members'),(request, response) => {
-  console.log(request);
-  response.status(200).json("Request successful");
+  const subId = request.auth.sub.split("|").pop();
+  console.log(subId);
+  /*
+  const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
+  // setting document with values
+  let addData = async () => {
+    await docRef.set({
+      first: "Cedrick",
+      last: "Monesit",
+      born: 2001,
+    });
+  };
+  addData();
+  */
+
+  const userRef = db.collection('users').doc(subId);
+  async function databasetest() {
+    const doc = await userRef.get();
+    if (!doc.exists) {
+      console.log('No such document!');
+    } else {
+      console.log('Document data:', doc.data());
+    }
+  }
+
+
+ databasetest();
+
 });
 
 app.delete("/:id", (request, response) => {

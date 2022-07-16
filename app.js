@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -18,7 +19,7 @@ const { initializeApp,applicationDefault,cert, } = require("firebase-admin/app")
 
 const { getFirestore,Timestamp,FieldValue, } = require("firebase-admin/firestore");
 
-const serviceAccount = require("./keys/kixs-1d4f3-9113c3eb4bdd.json"); // service account for firestore athentication access
+const serviceAccount = require(process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH); // service account for firestore athentication access
 
 // initialize firestore
 initializeApp({
@@ -27,7 +28,7 @@ initializeApp({
 
 const db = getFirestore();
 
-const PORT = process.env.PORT || 4000; // process.env.PORT checks if PORT is defined in env file if not it will use PORT 4000
+const PORT = process.env.PORT || 4000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
 const ads = [
   { title: "Hello, world!" }
@@ -58,11 +59,11 @@ const jwtCheck = jwt({
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: 'https://dev-uuh22p8d.us.auth0.com/.well-known/jwks.json'
+        jwksUri: process.env.AUTH0_JWKSURI
   }),
-  audience: 'https://kixs-api', // verifies that the token is for this audience
-  issuer: 'https://dev-uuh22p8d.us.auth0.com/', // verifies that the token is from this issuer
-  algorithms: ['RS256']
+  audience: process.env.AUTH0_AUDIENCE, // verifies that the token is for this audience
+  issuer: process.env.AUTH0_ISSUER, // verifies that the token is from this issuer
+  algorithms: [process.env.AUTH0_ALGORITHMS]
 });
 
 app.use(jwtCheck); // using jwtCheck as middleware
@@ -96,6 +97,7 @@ app.get("/members", jwtScope('read:members'),(request, response) => {
 
 
  databasetest();
+ response.status(200).json("Success");
 
 });
 

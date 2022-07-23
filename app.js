@@ -11,9 +11,9 @@ const app = express();
 const { expressjwt: jwt } = require('express-jwt'); 
 // deconstruct from express-jwt object if you add const { expressjwt: jwt } = require('express-jwt'); it will not work and throw TypeError: jwt is not a function
 
-const jwks = require('jwks-rsa');
+const jwksRsa = require('jwks-rsa');
 
-const jwtScope = require('express-jwt-scope');// makes it easy to setup scope and check them as middleware
+const jwtScope = require('express-jwt-scope');// makes it easy to setup scope and check them with middleware
 
 const { initializeApp,applicationDefault,cert, } = require("firebase-admin/app");
 
@@ -53,9 +53,9 @@ app.get("/", (request, response) => {
   response.send(ads);
 });
 
-
-const jwtCheck = jwt({
-  secret: jwks.expressJwtSecret({ // verifies if token has this public secret
+//middle ware to check and authorize access token from the request made by the frontend application
+const authorizeAccessToken = jwt({
+  secret: jwksRsa.expressJwtSecret({ // verifies if token has this public secret
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
@@ -63,15 +63,23 @@ const jwtCheck = jwt({
   }),
   audience: process.env.AUTH0_AUDIENCE, // verifies that the token is for this audience
   issuer: process.env.AUTH0_ISSUER, // verifies that the token is from this issuer
-  algorithms: [process.env.AUTH0_ALGORITHMS]
+  algorithms: [process.env.AUTH0_ALGORITHMS] // used to decode token
 });
+//app.use(jwtCheck); // using jwtCheck as middleware
 
-app.use(jwtCheck); // using jwtCheck as middleware
+let options = {
+  scopeKey: 'permissions' //default scopeKey is "scope" which is not set by roles/permissions in the Auth0 users dashboard
+}
 
-// jwtScope middleware checks an array of scopes that has to be verified anyone who accesses this endpoints 
-app.get("/members", jwtScope('read:members'),(request, response) => {
+
+// jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
+app.get("/members", authorizeAccessToken, jwtScope('read:members', options), (request, response) => {
   const subId = request.auth.sub.split("|").pop();
   console.log(subId);
+
+  // send response back to frontend that the user has permission to access this endpoint
+  // React frontend will handle the response from the backend to give user access to the role based route mounting the component
+
   /*
   const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
   // setting document with values
@@ -85,19 +93,19 @@ app.get("/members", jwtScope('read:members'),(request, response) => {
   addData();
   */
 
+
+  // Query database for correct data using user sub id from the frontend request
   const userRef = db.collection('users').doc(subId);
-  async function databasetest() {
+  async function getUserData() {
     const doc = await userRef.get();
     if (!doc.exists) {
       console.log('No such document!');
     } else {
       console.log('Document data:', doc.data());
+      response.status(200).json(doc.data());
     }
   }
-
-
- databasetest();
- response.status(200).json("Success");
+  getUserData();
 
 });
 

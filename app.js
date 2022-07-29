@@ -67,18 +67,22 @@ const authorizeAccessToken = jwt({
 });
 //app.use(jwtCheck); // using jwtCheck as middleware
 
+// property name of where roles/permissions are found
+// the access token is being passed into jwtScope which has a scope property and permissions property
 let options = {
   scopeKey: 'permissions' //default scopeKey is "scope" which is not set by roles/permissions in the Auth0 users dashboard
 }
 
 
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
-app.get("/members", authorizeAccessToken, jwtScope('read:members', options), (request, response) => {
+app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+
+  // Auth0 user sub id used for querying and sending data to database
   const subId = request.auth.sub.split("|").pop();
-  console.log(subId);
 
   // send response back to frontend that the user has permission to access this endpoint
   // React frontend will handle the response from the backend to give user access to the role based route mounting the component
+  response.status(200).json({authorized: true, message: "Authorized"});
 
   /*
   const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
@@ -95,6 +99,7 @@ app.get("/members", authorizeAccessToken, jwtScope('read:members', options), (re
 
 
   // Query database for correct data using user sub id from the frontend request
+  /*
   const userRef = db.collection('users').doc(subId);
   async function getUserData() {
     const doc = await userRef.get();
@@ -106,6 +111,7 @@ app.get("/members", authorizeAccessToken, jwtScope('read:members', options), (re
     }
   }
   getUserData();
+  */
 
 });
 
@@ -113,8 +119,9 @@ app.delete("/:id", (request, response) => {
   response.status(200).json({ members: filteredMembers });
 });
 
-const docRef = db.collection("users").doc("alovelace"); // setting collection and document in firestore database
 
+// sending data to store in the database
+const docRef = db.collection("users").doc("alovelace"); // setting collection and document in firestore database
 // setting document with values
 let addData = async () => {
   await docRef.set({

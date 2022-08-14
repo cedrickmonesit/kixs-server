@@ -73,6 +73,10 @@ let options = {
   scopeKey: 'permissions' //default scopeKey is "scope" which is not set by roles/permissions in the Auth0 users dashboard
 }
 
+app.get("/favorites", authorizeAccessToken, (request, response) => {
+  const favorites = ["Jordan 1", "Jordan 4", "Jordan 11"];
+  response.send(favorites);
+});
 
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
 app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
@@ -82,7 +86,7 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
   // send response back to frontend that the user has permission to access this endpoint
   // React frontend will handle the response from the backend to give user access to the role based route mounting the component
-  response.status(200).json({authorized: true, message: "Authorized"});
+  response.status(201).json({authorized: true, message: "Authorized"});
 
   /*
   const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
@@ -115,8 +119,49 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
 });
 
+
+
+app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+  console.log(request);
+
+  //product name
+  const productName = request;
+
+  //product variant
+  const productVariant = request;
+
+
+  //creates unique product ID string
+  const productId = Math.random().toString(36).substring(7);
+
+  //add product data to database
+  const docRef = db.collection("products").doc(productId); // setting collection and document in firestore database
+
+  // add product to database
+  // setting document with values
+  /*
+   let addData = async () => {
+    await docRef.set({
+      name: `Jordan 4 Retro`,
+      variant: `Bred`,
+      id: `${productId}`
+    });
+  };
+*/
+  response.status(200).json({authorized: true, message: "Authorized"});
+  
+});
+
+app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+  //update product data in database
+});
+
+app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+  //delete product data from database
+});
+
 app.delete("/:id", (request, response) => {
-  response.status(200).json({ members: filteredMembers });
+  // using product id delete product from database
 });
 
 

@@ -73,6 +73,10 @@ let options = {
   scopeKey: 'permissions' //default scopeKey is "scope" which is not set by roles/permissions in the Auth0 users dashboard
 }
 
+let sendData = async (docRef, data = {}) => {
+  await docRef.set({...data});
+};
+
 app.get("/favorites", authorizeAccessToken, (request, response) => {
   const favorites = ["Jordan 1", "Jordan 4", "Jordan 11"];
   response.send(favorites);
@@ -86,7 +90,8 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
   // send response back to frontend that the user has permission to access this endpoint
   // React frontend will handle the response from the backend to give user access to the role based route mounting the component
-  response.status(201).json({authorized: true, message: "Authorized"});
+  // status 200 is for GET requests
+  response.status(200).json({authorized: true, message: "Authorized"});
 
   /*
   const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
@@ -119,37 +124,38 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
 });
 
-
-
 app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
-  console.log(request);
+  console.log(request.body);
+
+  const product = request.body;
 
   //product name
-  const productName = request;
+  const productName = product.name;
 
   //product variant
-  const productVariant = request;
+  const productVariant = product.variant;
 
+  //product msrp
+  const productMsrp = product.msrp;
 
+  //product ID
   //creates unique product ID string
   const productId = Math.random().toString(36).substring(7);
 
-  //add product data to database
-  const docRef = db.collection("products").doc(productId); // setting collection and document in firestore database
-
-  // add product to database
-  // setting document with values
-  /*
-   let addData = async () => {
-    await docRef.set({
-      name: `Jordan 4 Retro`,
-      variant: `Bred`,
-      id: `${productId}`
-    });
+  //product data
+  const data = {
+    name: `${productName}`,
+    variant: `${productVariant}`,
+    msrp: productMsrp,
+    id: `${productId}`
   };
-*/
-  response.status(200).json({authorized: true, message: "Authorized"});
-  
+
+  const docRef = db.collection("products").doc(productId);
+
+  sendData(docRef, data);
+
+  // status 201 is for POST & PUT requests
+  response.status(201).send({authorized: true, message: "Success"});
 });
 
 app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {

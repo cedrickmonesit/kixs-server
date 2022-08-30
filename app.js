@@ -73,8 +73,37 @@ let options = {
   scopeKey: 'permissions' //default scopeKey is "scope" which is not set by roles/permissions in the Auth0 users dashboard
 }
 
+//send data
 let sendData = async (docRef, data = {}) => {
   await docRef.set({...data});
+};
+
+//update data 
+let updateData = async (docRef, data = {}) => {
+  await docRef.update({...data});
+};
+
+//delete data
+let deleteData = async (docRef) => {
+  await docRef.delete();
+};
+
+//get data
+let getData = (docRef) => {
+  //return promise
+  return docRef.get().then((doc) => {
+    //check if the document exists
+    if(doc.exists){
+
+      //returns a pending promise
+      return doc.data();
+
+    }else {
+
+      //returns a rejected promise
+      return Promise.reject("No such document");
+    }
+  });
 };
 
 app.get("/favorites", authorizeAccessToken, (request, response) => {
@@ -160,30 +189,74 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
 
 app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   //update product data in database
+  const product = request.body;
+
+  //product name
+  const productName = product.name;
+
+  //product variant
+  const productVariant = product.variant;
+
+  //product msrp
+  const productMsrp = product.msrp;
+
+  //product ID
+  const productId = product.id;
+
+  //update product data in database
+  //product data
+  const data = {
+    name: `${productName}`,
+    variant: `${productVariant}`,
+    msrp: productMsrp
+  };
+
+  const docRef = db.collection("products").doc(productId);
+
+  updateData(docRef, data);
+
+  // status 201 is for POST & PUT requests
+  response.status(201).send({authorized: true, message: "Success"});
 });
 
 app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+  //product 
+  const product = request.body;
+
+  //product ID
+  const productId = product.id;
+
+  const docRef = db.collection("products").doc(productId);
+
   //delete product data from database
+  deleteData(docRef);
+
+  response.status(200).send({authorized: true, message: "Success"});
 });
 
-app.delete("/:id", (request, response) => {
-  // using product id delete product from database
+app.get("/product/:id", async (request, response) => {
+  // using product id get product from database
+  const productId = request.params.id
+
+  //docRef
+  const docRef = db.collection('products').doc(productId);
+
+  //getData returns a promise
+  //await the promise that getData() returns
+  const data = await getData(docRef)
+  //handles resolved and rejected promises
+  //first parameter of .then() method is a callback function for a resolved promise second parameter is a callback for a rejected promise
+  //in this case the second argument for the rejected promises is undefined and is being handled by .catch()
+  .then((data) => {
+    //product data
+    return data;
+  })
+  //handles rejected promise
+  .catch((error) => {
+    return {error: error, message: "Error"};
+  })
+
+  response.status(200).send({data: data, message: "Success"});
 });
-
-
-// sending data to store in the database
-const docRef = db.collection("users").doc("alovelace"); // setting collection and document in firestore database
-// setting document with values
-let addData = async () => {
-  await docRef.set({
-    first: "Ada",
-    last: "Lovelace",
-    born: 1815,
-  });
-};
-
-/*
-addData();
-*/
 
 app.listen(PORT, () => console.log(`Server running ${PORT}`));

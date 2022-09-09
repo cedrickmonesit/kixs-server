@@ -19,6 +19,12 @@ const { initializeApp,applicationDefault,cert, } = require("firebase-admin/app")
 
 const { getFirestore,Timestamp,FieldValue, } = require("firebase-admin/firestore");
 
+//google cloud storage
+const { Storage } = require("@google-cloud/storage");
+
+// multer
+const Multer = require('multer');
+
 const serviceAccount = require(process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH); // service account for firestore athentication access
 
 // initialize firestore
@@ -26,7 +32,22 @@ initializeApp({
   credential: cert(serviceAccount),
 });
 
+// initialize firebase storage
+const storage = new Storage({
+  projectId: serviceAccount.project_id,
+  keyFilename: process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH
+});
+
 const db = getFirestore();
+
+const bucket = storage.bucket("gs://kixs-1d4f3.appspot.com");
+
+const multer = Multer({
+  storage: Multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // no larger than 5mb; change as needed.
+  }
+});
 
 const PORT = process.env.PORT || 4000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
@@ -106,6 +127,51 @@ let getData = (docRef) => {
   });
 };
 
+// upload image file to google storage
+// the file object will be uploaded to google storage
+const uploadImageToStorage = (file, productId) => {
+  // return promise
+  return new Promise((resolve, reject) => {
+
+    // promise reject if file doesn't exist
+    if(!file) {
+      reject('No image file');
+    }
+
+    // create new file name with product id and original name
+    let newFileName = `${productId}_${file.originalname}`;
+
+    let fileUpload = bucket.file(newFileName);
+
+    // create binary larg object stream for image file upload
+    const blobStream = fileUpload.createWriteStream({
+      metadata: {
+        // media type two part identifier for file formats and format contents transmitted on the internet
+        contentType: file.mimetype
+      }
+    });
+
+    // blobStream error promise reject with error
+    blobStream.on("error", (error) => {
+      reject(error);
+    });
+
+    blobStream.on("finish", () => {
+      // The public URL can be used to directly access the file via HTTP
+      // We will store this image URL in an array within the firestore database in the product document
+      const url = `https://storage.googleapis.com/${bucket.name}/${fileUpload.name}`;
+
+      // resolve promise with image URL
+      resolve(url);
+    });
+
+    blobStream.end(file.buffer);
+  });
+}
+
+/* Endpoint */
+
+// get product favorites
 app.get("/favorites", authorizeAccessToken, (request, response) => {
   const favorites = ["Jordan 1", "Jordan 4", "Jordan 11"];
   response.send(favorites);
@@ -122,37 +188,9 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
   // status 200 is for GET requests
   response.status(200).json({authorized: true, message: "Authorized"});
 
-  /*
-  const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
-  // setting document with values
-  let addData = async () => {
-    await docRef.set({
-      first: "Cedrick",
-      last: "Monesit",
-      born: 2001,
-    });
-  };
-  addData();
-  */
-
-
-  // Query database for correct data using user sub id from the frontend request
-  /*
-  const userRef = db.collection('users').doc(subId);
-  async function getUserData() {
-    const doc = await userRef.get();
-    if (!doc.exists) {
-      console.log('No such document!');
-    } else {
-      console.log('Document data:', doc.data());
-      response.status(200).json(doc.data());
-    }
-  }
-  getUserData();
-  */
-
 });
 
+// save product data
 app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   console.log(request.body);
 
@@ -187,6 +225,34 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   response.status(201).send({authorized: true, message: "Success"});
 });
 
+// upload product images
+app.post('/product/images/:id', multer.single('file'), (request, response) => {
+  //product id
+  const productId = request.params.id
+
+  // image file from request
+  let file = request.file;
+
+  // if file exists
+  if(file) {
+
+    // uploadImageToStorage returns a promise
+    // handle promise resolve and reject
+    uploadImageToStorage(file, productId)
+      .then((url) => { // handles promise resolve
+      // response to frontend request was successful
+      response.status(200).send({
+        status: 'success',
+        image: url
+      });
+    })
+    .catch((error) => { // catch handles promise reject return error
+      console.log(error);
+    });
+  }
+});
+
+// update product data
 app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   //update product data in database
   const product = request.body;
@@ -219,6 +285,7 @@ app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', option
   response.status(201).send({authorized: true, message: "Success"});
 });
 
+// delete product with id
 app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   //product 
   const product = request.body;
@@ -234,6 +301,7 @@ app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', opt
   response.status(200).send({authorized: true, message: "Success"});
 });
 
+// get product with id
 app.get("/product/:id", async (request, response) => {
   // using product id get product from database
   const productId = request.params.id

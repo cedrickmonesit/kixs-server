@@ -127,9 +127,14 @@ let getData = (docRef) => {
   });
 };
 
-// upload image file to google storage
-// the file object will be uploaded to google storage
-const uploadImageToStorage = (file, productId) => {
+
+/* 
+  Function to upload image file to google storage
+  the file object will be uploaded to google storage
+  @param {object} image file
+  @return {Promise} returns a promise that needs to be handled
+*/
+const uploadImageToStorage = (file, productId, index) => {
   // return promise
   return new Promise((resolve, reject) => {
 
@@ -139,11 +144,11 @@ const uploadImageToStorage = (file, productId) => {
     }
 
     // create new file name with product id and original name
-    let newFileName = `${productId}_${file.originalname}`;
+    let newFileName = `${productId}_image-${index}_${file.originalname}`;
 
     let fileUpload = bucket.file(newFileName);
 
-    // create binary larg object stream for image file upload
+    // create binary large object stream for image file upload
     const blobStream = fileUpload.createWriteStream({
       metadata: {
         // media type two part identifier for file formats and format contents transmitted on the internet
@@ -226,30 +231,35 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
 });
 
 // upload product images
-app.post('/product/images/:id', multer.single('file'), (request, response) => {
+app.post('/product/images/:id', multer.array('images', 5), (request, response) => {
+  // req.files is array of `photos` files
+  // req.body will contain the text fields, if there were any
+  console.log(request.files);
+
   //product id
-  const productId = request.params.id
+  const productId = request.params.id;
 
   // image file from request
-  let file = request.file;
-
-  // if file exists
-  if(file) {
-
-    // uploadImageToStorage returns a promise
-    // handle promise resolve and reject
-    uploadImageToStorage(file, productId)
-      .then((url) => { // handles promise resolve
-      // response to frontend request was successful
-      response.status(200).send({
-        status: 'success',
-        image: url
+  let images = request.files;
+  
+  images.forEach((image, index) => {
+    // if image exists
+    if(image) {
+      // uploadImageToStorage returns a promise
+      // handle promise resolve and reject
+      uploadImageToStorage(image, productId, index)
+        .then((url) => { // handles promise resolve
+        // response to frontend request was successful
+        response.status(200).send({
+          status: 'success'
+        });
+      })
+      .catch((error) => { // catch handles promise reject return error
+        console.log(error);
       });
-    })
-    .catch((error) => { // catch handles promise reject return error
-      console.log(error);
-    });
-  }
+    }
+  });
+  
 });
 
 // update product data

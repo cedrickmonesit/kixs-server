@@ -40,7 +40,7 @@ const storage = new Storage({
 
 const db = getFirestore();
 
-const bucket = storage.bucket("gs://kixs-1d4f3.appspot.com");
+const bucket = storage.bucket("kixs-1d4f3.appspot.com");
 
 const multer = Multer({
   storage: Multer.memoryStorage(),
@@ -144,7 +144,7 @@ const uploadImageToStorage = (file, productId, index) => {
     }
 
     // create new file name with product id and original name
-    let newFileName = `${productId}_image-${index}_${file.originalname}`;
+    let newFileName = `${productId}_image-${index}`;
 
     let fileUpload = bucket.file(newFileName);
 
@@ -174,7 +174,7 @@ const uploadImageToStorage = (file, productId, index) => {
   });
 }
 
-/* Endpoint */
+/* Endpoints */
 
 // get product favorites
 app.get("/favorites", authorizeAccessToken, (request, response) => {
@@ -242,6 +242,7 @@ app.post('/product/images/:id', multer.array('images', 5), (request, response) =
   // image file from request
   let images = request.files;
   
+  // upload each image to firebase storage with correct name
   images.forEach((image, index) => {
     // if image exists
     if(image) {
@@ -259,7 +260,43 @@ app.post('/product/images/:id', multer.array('images', 5), (request, response) =
       });
     }
   });
-  
+
+
+  // retrieve all uploaded URL images from firebase storage to store in firestore database
+  // max amount of images uploaded per product is 5
+
+  /*
+   function generates signedUrl for image file
+   @return {Promise} returns a promise
+  */
+  let generateV4ReadSignedUrl = (fileName) => {
+    return new Promise(async (resolve) => {
+      const options = {
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 60 * 60 * 1000, // 15 minutes
+      };
+      const [signedUrl] = await storage.bucket(bucket.name).file(fileName).getSignedUrl(options);
+      resolve(signedUrl);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+  /* 
+    function generates an array of image file promises
+    @return {Promise} returns a promise
+  */
+  let generateSignedUrlArray = () => {
+    let maxImageCount = 5;
+    let signedUrls = [];
+    for(let i = 0; i < maxImageCount; i++){
+      signedUrls.push(generateV4ReadSignedUrl(`${productId}_image-${i}`));
+    };
+
+    return signedUrls;
+  }
+    
 });
 
 // update product data

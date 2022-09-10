@@ -195,8 +195,79 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
 });
 
+
+
+/* 
+  function uploads product images
+  @param {object} request object from /save-product endpoint
+  @param {string} product id
+  req.files is array of `photos` files
+  req.body will contain the text fields, if there were any
+*/
+let uploadProductImages = (request, id) => {
+
+  // image file from request
+  let images = request.files;
+  
+  // upload each image to firebase storage with correct name
+  images.forEach((image, index) => {
+    // if image exists
+    if(image) {
+      // uploadImageToStorage returns a promise
+      // handle promise resolve and reject
+      uploadImageToStorage(image, id, index)
+        .then((url) => { // handles promise resolve
+        // response to frontend request was successful
+        response.status(200).send({
+          status: 'success'
+        });
+      })
+      .catch((error) => { // catch handles promise reject return error
+        console.log(error);
+      });
+    }
+  });
+}
+
+  // retrieve all uploaded URL images from firebase storage to store in firestore database
+  /*
+      @param {string} fileName 
+      @returns {Promise} returns a signedUrl promise
+  */
+  let generateV4ReadSignedUrl = (fileName) => {
+    console.log(fileName);
+    return new Promise(async (resolve) => {
+      const options = {
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 60 * 60 * 1000, // 15 minutes
+      };
+      const [signedUrl] = await storage.bucket(bucket.name).file(fileName).getSignedUrl(options);
+      resolve(signedUrl);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+  /* 
+    function returns array of image file promises
+    @return {Promise} returns an array of promises
+    @param {String} product id
+    // max amount of images uploaded per product is 5
+  */
+  let generateSignedUrlArray = (id) => {
+    let maxImageCount = 5;
+    let signedUrls = [];
+    for(let i = 0; i < maxImageCount; i++){
+      signedUrls.push(generateV4ReadSignedUrl(`${id}_image-${i}`));
+    };
+
+    return signedUrls;
+  }
+
+
 // save product data
-app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
+app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), multer.array('images', 5), (request, response) => {
   console.log(request.body);
 
   const product = request.body;
@@ -214,89 +285,40 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   //creates unique product ID string
   const productId = Math.random().toString(36).substring(7);
 
-  //product data
-  const data = {
-    name: `${productName}`,
-    variant: `${productVariant}`,
-    msrp: productMsrp,
-    id: `${productId}`
-  };
+  //upload product images from request to firebase storage
+  uploadProductImages(request, productId);
 
-  const docRef = db.collection("products").doc(productId);
-
-  sendData(docRef, data);
-
-  // status 201 is for POST & PUT requests
-  response.status(201).send({authorized: true, message: "Success"});
-});
-
-// upload product images
-app.post('/product/images/:id', multer.array('images', 5), (request, response) => {
-  // req.files is array of `photos` files
-  // req.body will contain the text fields, if there were any
-  console.log(request.files);
-
-  //product id
-  const productId = request.params.id;
-
-  // image file from request
-  let images = request.files;
-  
-  // upload each image to firebase storage with correct name
-  images.forEach((image, index) => {
-    // if image exists
-    if(image) {
-      // uploadImageToStorage returns a promise
-      // handle promise resolve and reject
-      uploadImageToStorage(image, productId, index)
-        .then((url) => { // handles promise resolve
-        // response to frontend request was successful
-        response.status(200).send({
-          status: 'success'
-        });
-      })
-      .catch((error) => { // catch handles promise reject return error
-        console.log(error);
-      });
-    }
-  });
-
-
-  // retrieve all uploaded URL images from firebase storage to store in firestore database
-  // max amount of images uploaded per product is 5
+  //generate image url array to store in the firestore database
+  const signedUrls = generateSignedUrlArray(productId);
 
   /*
-   function generates signedUrl for image file
-   @return {Promise} returns a promise
+   send product data to firestore database
+   @params {Array} image urls array
   */
-  let generateV4ReadSignedUrl = (fileName) => {
-    return new Promise(async (resolve) => {
-      const options = {
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + 60 * 60 * 1000, // 15 minutes
-      };
-      const [signedUrl] = await storage.bucket(bucket.name).file(fileName).getSignedUrl(options);
-      resolve(signedUrl);
-    }).catch((err) => {
-      console.log(err);
-    });
-  }
-
-  /* 
-    function generates an array of image file promises
-    @return {Promise} returns a promise
-  */
-  let generateSignedUrlArray = () => {
-    let maxImageCount = 5;
-    let signedUrls = [];
-    for(let i = 0; i < maxImageCount; i++){
-      signedUrls.push(generateV4ReadSignedUrl(`${productId}_image-${i}`));
+  let sendProductData = (urls = []) => {
+    //product data
+    const data = {
+      name: `${productName}`,
+      variant: `${productVariant}`,
+      msrp: productMsrp,
+      id: `${productId}`,
+      images: [...urls]
     };
 
-    return signedUrls;
+    const docRef = db.collection("products").doc(productId);
+
+    sendData(docRef, data);
+
+    // status 201 is for POST & PUT requests
+    response.status(201).send({authorized: true, message: "Success"});
   }
-    
+
+  //product image URLS
+  Promise.all(signedUrls).then((urls) => {
+    sendProductData(urls);
+  });
+  
+
 });
 
 // update product data

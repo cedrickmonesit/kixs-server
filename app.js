@@ -215,16 +215,7 @@ let uploadProductImages = (request, id) => {
     if(image) {
       // uploadImageToStorage returns a promise
       // handle promise resolve and reject
-      uploadImageToStorage(image, id, index)
-        .then((url) => { // handles promise resolve
-        // response to frontend request was successful
-        response.status(200).send({
-          status: 'success'
-        });
-      })
-      .catch((error) => { // catch handles promise reject return error
-        console.log(error);
-      });
+      uploadImageToStorage(image, id, index);
     }
   });
 }
@@ -253,12 +244,12 @@ let uploadProductImages = (request, id) => {
     function returns array of image file promises
     @return {Promise} returns an array of promises
     @param {String} product id
+    @param {Array} image files from request
     // max amount of images uploaded per product is 5
   */
-  let generateSignedUrlArray = (id) => {
-    let maxImageCount = 5;
+  let generateSignedUrlArray = (id, images) => {
     let signedUrls = [];
-    for(let i = 0; i < maxImageCount; i++){
+    for(let i = 0; i < images.length; i++){
       signedUrls.push(generateV4ReadSignedUrl(`${id}_image-${i}`));
     };
 
@@ -289,7 +280,7 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   uploadProductImages(request, productId);
 
   //generate image url array to store in the firestore database
-  const signedUrls = generateSignedUrlArray(productId);
+  const signedUrls = generateSignedUrlArray(productId, request.files);
 
   /*
    send product data to firestore database

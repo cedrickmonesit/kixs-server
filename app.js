@@ -128,10 +128,12 @@ let getData = (docRef) => {
 };
 
 
-/* 
-  Function to upload image file to google storage
-  the file object will be uploaded to google storage
+/*
+  Function to upload image file to Google storage
+  the file object will be uploaded to Google storage
   @param {object} image file
+  @param {string} product id used for uploading image file reference
+  @param {integer} index from foreach loop
   @return {Promise} returns a promise that needs to be handled
 */
 const uploadImageToStorage = (file, productId, index) => {
@@ -143,7 +145,7 @@ const uploadImageToStorage = (file, productId, index) => {
       reject('No image file');
     }
 
-    // create new file name with product id and original name
+    // create new file name with product id and index
     let newFileName = `${productId}_image-${index}`;
 
     let fileUpload = bucket.file(newFileName);
@@ -161,13 +163,10 @@ const uploadImageToStorage = (file, productId, index) => {
       reject(error);
     });
 
+    // blobstream finishes
     blobStream.on("finish", () => {
-      // The public URL can be used to directly access the file via HTTP
-      // We will store this image URL in an array within the firestore database in the product document
-      const url = `https://storage.googleapis.com/${bucket.name}/${fileUpload.name}`;
-
-      // resolve promise with image URL
-      resolve(url);
+      //resolve promise return true boolean
+      resolve(true);
     });
 
     blobStream.end(file.buffer);
@@ -197,34 +196,43 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
 
 
 
-/* 
+/*
   function uploads product images
   @param {object} request object from /save-product endpoint
   @param {string} product id
-  req.files is array of `photos` files
-  req.body will contain the text fields, if there were any
+  request.files is an array of image files
+  request.body will contain the text fields
 */
 let uploadProductImages = (request, id) => {
 
   // image file from request
   let images = request.files;
   
-  // upload each image to firebase storage with correct name
+  // upload each image to firebase storage
   images.forEach((image, index) => {
     // if image exists
     if(image) {
-      // uploadImageToStorage returns a promise
       // handle promise resolve and reject
-      uploadImageToStorage(image, id, index);
+      uploadImageToStorage(image, id, index)
+      .then((message) => {
+        // handles promise resolve
+        console.log(message);
+      })
+      .catch((error) => {
+        // catch handles promise reject
+        console.log(error);
+      });
     }
   });
 }
 
-  // retrieve all uploaded URL images from firebase storage to store in firestore database
-  /*
-      @param {string} fileName 
-      @returns {Promise} returns a signedUrl promise
-  */
+// retrieve all uploaded URL images from firebase storage to store in the firestore database
+
+/*
+  function retrieve signed image URL
+  @param {string} fileName
+  @return {Promise} returns a signedURL promise
+*/
   let generateV4ReadSignedUrl = (fileName) => {
     console.log(fileName);
     return new Promise(async (resolve) => {
@@ -240,13 +248,12 @@ let uploadProductImages = (request, id) => {
     });
   }
 
-  /* 
-    function returns array of image file promises
-    @return {Promise} returns an array of promises
-    @param {String} product id
-    @param {Array} image files from request
-    // max amount of images uploaded per product is 5
-  */
+/* 
+  function loops through images and returns an array of promises
+  @param {string} product id
+  @param {Array} image files from the request.files
+  @return {Array} returns an array of promises
+*/
   let generateSignedUrlArray = (id, images) => {
     let signedUrls = [];
     for(let i = 0; i < images.length; i++){
@@ -259,7 +266,6 @@ let uploadProductImages = (request, id) => {
 
 // save product data
 app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), multer.array('images', 5), (request, response) => {
-  console.log(request.body);
 
   const product = request.body;
 
@@ -282,9 +288,9 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   //generate image url array to store in the firestore database
   const signedUrls = generateSignedUrlArray(productId, request.files);
 
-  /*
-   send product data to firestore database
-   @params {Array} image urls array
+ /*
+    send product data to firestore database
+    @param {Array} image urls array
   */
   let sendProductData = (urls = []) => {
     //product data
@@ -304,11 +310,13 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
     response.status(201).send({authorized: true, message: "Success"});
   }
 
-  //product image URLS
+  // handle the array of promises for the product image signed URLS
   Promise.all(signedUrls).then((urls) => {
     sendProductData(urls);
+  }) // handle promise reject
+  .catch((error) => {
+    console.log(error);
   });
-  
 
 });
 

@@ -19,6 +19,12 @@ const { initializeApp,applicationDefault,cert, } = require("firebase-admin/app")
 
 const { getFirestore,Timestamp,FieldValue, } = require("firebase-admin/firestore");
 
+//google cloud storage
+const { Storage } = require("@google-cloud/storage");
+
+// multer
+const Multer = require('multer');
+
 const serviceAccount = require(process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH); // service account for firestore athentication access
 
 // initialize firestore
@@ -26,7 +32,22 @@ initializeApp({
   credential: cert(serviceAccount),
 });
 
+// initialize firebase storage
+const storage = new Storage({
+  projectId: serviceAccount.project_id,
+  keyFilename: process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH
+});
+
 const db = getFirestore();
+
+const bucket = storage.bucket("kixs-1d4f3.appspot.com");
+
+const multer = Multer({
+  storage: Multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // no larger than 5mb; change as needed.
+  }
+});
 
 const PORT = process.env.PORT || 4000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
@@ -106,6 +127,55 @@ let getData = (docRef) => {
   });
 };
 
+
+/*
+  Function to upload image file to Google storage
+  the file object will be uploaded to Google storage
+  @param {object} image file
+  @param {string} product id used for uploading image file reference
+  @param {integer} index from foreach loop
+  @return {Promise} returns a promise that needs to be handled
+*/
+const uploadImageToStorage = (file, productId, index) => {
+  // return promise
+  return new Promise((resolve, reject) => {
+
+    // promise reject if file doesn't exist
+    if(!file) {
+      reject('No image file');
+    }
+
+    // create new file name with product id and index
+    let newFileName = `${productId}_image-${index}`;
+
+    let fileUpload = bucket.file(newFileName);
+
+    // create binary large object stream for image file upload
+    const blobStream = fileUpload.createWriteStream({
+      metadata: {
+        // media type two part identifier for file formats and format contents transmitted on the internet
+        contentType: file.mimetype
+      }
+    });
+
+    // blobStream error promise reject with error
+    blobStream.on("error", (error) => {
+      reject(error);
+    });
+
+    // blobstream finishes
+    blobStream.on("finish", () => {
+      //resolve promise return true boolean
+      resolve(true);
+    });
+
+    blobStream.end(file.buffer);
+  });
+}
+
+/* Endpoints */
+
+// get product favorites
 app.get("/favorites", authorizeAccessToken, (request, response) => {
   const favorites = ["Jordan 1", "Jordan 4", "Jordan 11"];
   response.send(favorites);
@@ -122,39 +192,80 @@ app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options
   // status 200 is for GET requests
   response.status(200).json({authorized: true, message: "Authorized"});
 
-  /*
-  const docRef = db.collection("users").doc(subId); // setting collection and document in firestore database
-  // setting document with values
-  let addData = async () => {
-    await docRef.set({
-      first: "Cedrick",
-      last: "Monesit",
-      born: 2001,
-    });
-  };
-  addData();
-  */
-
-
-  // Query database for correct data using user sub id from the frontend request
-  /*
-  const userRef = db.collection('users').doc(subId);
-  async function getUserData() {
-    const doc = await userRef.get();
-    if (!doc.exists) {
-      console.log('No such document!');
-    } else {
-      console.log('Document data:', doc.data());
-      response.status(200).json(doc.data());
-    }
-  }
-  getUserData();
-  */
-
 });
 
-app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
-  console.log(request.body);
+
+
+/*
+  function uploads product images
+  @param {object} request object from /save-product endpoint
+  @param {string} product id
+  request.files is an array of image files
+  request.body will contain the text fields
+*/
+let uploadProductImages = (request, id) => {
+
+  // image file from request
+  let images = request.files;
+  
+  // upload each image to firebase storage
+  images.forEach((image, index) => {
+    // if image exists
+    if(image) {
+      // handle promise resolve and reject
+      uploadImageToStorage(image, id, index)
+      .then((message) => {
+        // handles promise resolve
+        console.log(message);
+      })
+      .catch((error) => {
+        // catch handles promise reject
+        console.log(error);
+      });
+    }
+  });
+}
+
+// retrieve all uploaded URL images from firebase storage to store in the firestore database
+
+/*
+  function retrieve signed image URL
+  @param {string} fileName
+  @return {Promise} returns a signedURL promise
+*/
+  let generateV4ReadSignedUrl = (fileName) => {
+    console.log(fileName);
+    return new Promise(async (resolve) => {
+      const options = {
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 60 * 60 * 1000, // 15 minutes
+      };
+      const [signedUrl] = await storage.bucket(bucket.name).file(fileName).getSignedUrl(options);
+      resolve(signedUrl);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+/* 
+  function loops through images and returns an array of promises
+  @param {string} product id
+  @param {Array} image files from the request.files
+  @return {Array} returns an array of promises
+*/
+  let generateSignedUrlArray = (id, images) => {
+    let signedUrls = [];
+    for(let i = 0; i < images.length; i++){
+      signedUrls.push(generateV4ReadSignedUrl(`${id}_image-${i}`));
+    };
+
+    return signedUrls;
+  }
+
+
+// save product data
+app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options), multer.array('images', 5), (request, response) => {
 
   const product = request.body;
 
@@ -171,22 +282,45 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   //creates unique product ID string
   const productId = Math.random().toString(36).substring(7);
 
-  //product data
-  const data = {
-    name: `${productName}`,
-    variant: `${productVariant}`,
-    msrp: productMsrp,
-    id: `${productId}`
-  };
+  //upload product images from request to firebase storage
+  uploadProductImages(request, productId);
 
-  const docRef = db.collection("products").doc(productId);
+  //generate image url array to store in the firestore database
+  const signedUrls = generateSignedUrlArray(productId, request.files);
 
-  sendData(docRef, data);
+ /*
+    send product data to firestore database
+    @param {Array} image urls array
+  */
+  let sendProductData = (urls = []) => {
+    //product data
+    const data = {
+      name: `${productName}`,
+      variant: `${productVariant}`,
+      msrp: productMsrp,
+      id: `${productId}`,
+      images: [...urls]
+    };
 
-  // status 201 is for POST & PUT requests
-  response.status(201).send({authorized: true, message: "Success"});
+    const docRef = db.collection("products").doc(productId);
+
+    sendData(docRef, data);
+
+    // status 201 is for POST & PUT requests
+    response.status(201).send({authorized: true, message: "Success"});
+  }
+
+  // handle the array of promises for the product image signed URLS
+  Promise.all(signedUrls).then((urls) => {
+    sendProductData(urls);
+  }) // handle promise reject
+  .catch((error) => {
+    console.log(error);
+  });
+
 });
 
+// update product data
 app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   //update product data in database
   const product = request.body;
@@ -219,6 +353,7 @@ app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', option
   response.status(201).send({authorized: true, message: "Success"});
 });
 
+// delete product with id
 app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
   //product 
   const product = request.body;
@@ -234,6 +369,7 @@ app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', opt
   response.status(200).send({authorized: true, message: "Success"});
 });
 
+// get product with id
 app.get("/product/:id", async (request, response) => {
   // using product id get product from database
   const productId = request.params.id

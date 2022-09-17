@@ -268,6 +268,15 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
 
 });
 
+// get all products
+app.get("/products", authorizeAccessToken, async (request, response) => {
+  const snapshot = await db.collection('products').get()
+  const products = snapshot.docs.map(doc => doc.data());
+
+  // status 200 request successful
+  response.status(200).json({ success: true, products: [...products] });
+});
+
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
 app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
 

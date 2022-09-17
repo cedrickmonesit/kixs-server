@@ -175,26 +175,103 @@ const uploadImageToStorage = (file, productId, index) => {
 
 /* Endpoints */
 
-// get product favorites
-app.get("/favorites", authorizeAccessToken, (request, response) => {
-  const favorites = ["Jordan 1", "Jordan 4", "Jordan 11"];
-  response.send(favorites);
+// get user's favorites list
+app.get("/favorites", authorizeAccessToken, async (request, response) => {
+
+  // Auth0 user sub id used for querying and sending data to database
+  const subId = request.auth.sub.split("|").pop();
+
+  // referencing document with user subId that contains user favorites list
+  const docRef = db.collection("users").doc(subId);
+
+  // retrieve user's favorites list
+  const favorites = await getData(docRef)  
+  .then((data) => {
+    // favorites list
+    return { success: true, products: [...data.products] };
+  })
+  //handles rejected promise
+  .catch((error) => {
+    // erroer message
+    return { success: false, error: error, message: "Error" };
+  });
+
+  // status 200 request successful
+  response.status(200).json(favorites);
+
+});
+
+app.post("/add-user", authorizeAccessToken, (request, response) => {
+  // add user subId to firestore database as document name for reference
+
+  // Auth0 user sub id used for querying and sending data to database
+  const subId = request.auth.sub.split("|").pop();
+
+  // creates users collection with document name as user subId
+  const docRef = db.collection("users").doc(subId);
+
+  //favorites list data
+  const data = {
+    products: []
+  };
+
+  sendData(docRef, data);
+
+  // status 201 new resources was created
+  response.status(201).json({ success: true, message: "User was added to the database" });
+});
+
+app.post("/favorites/add-product/:id", authorizeAccessToken, async (request, response) => {
+  // Auth0 user sub id used for querying and sending data to database
+  const subId = request.auth.sub.split("|").pop();
+
+  // product id that will be added to the favorites list
+  const productId = request.params.id;
+
+  // referencing document with user subId that contains user favorites list
+  const docRef = db.collection("users").doc(subId);
+
+  // retrieve user's favorites list
+  const favorites = await getData(docRef)  
+  .then((data) => {
+    // favorites list
+    return { success: true, products: [...data.products] };
+  })
+  //handles rejected promise
+  .catch((error) => {
+    // erroer message
+    return { success: false, error: error, message: "Error" };
+  });
+
+  //check if product is not in the favorites list
+  if(!favorites.products.includes(productId)){
+    // add product id to favorites list
+    favorites.products.push(productId);
+  }
+
+
+  // favorites data to be sent to the firestore database
+  const data = {
+    // destructure favorites list
+    ...favorites
+  };
+
+  // update favorites list with new favorites list
+  updateData(docRef, data);
+
+  // status 201 new resources was created
+  response.status(201).json({success: true, message: "Product was added to the user's favorites list"});
 });
 
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
 app.get("/authorization", authorizeAccessToken, jwtScope('access:admin', options), (request, response) => {
 
-  // Auth0 user sub id used for querying and sending data to database
-  const subId = request.auth.sub.split("|").pop();
-
   // send response back to frontend that the user has permission to access this endpoint
   // React frontend will handle the response from the backend to give user access to the role based route mounting the component
   // status 200 is for GET requests
-  response.status(200).json({authorized: true, message: "Authorized"});
+  response.status(200).json({success: true, authorized: true, message: "Authorized"});
 
 });
-
-
 
 /*
   function uploads product images
@@ -307,7 +384,7 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
     sendData(docRef, data);
 
     // status 201 is for POST & PUT requests
-    response.status(201).send({authorized: true, message: "Success"});
+    response.status(201).send({ success: true, authorized: true, message: "Product data was sent to the database"});
   }
 
   // handle the array of promises for the product image signed URLS
@@ -316,6 +393,7 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   }) // handle promise reject
   .catch((error) => {
     console.log(error);
+    response.status(201).send({ success: false, authorized: true, message: "Product data was not sent to the database", error: error });
   });
 
 });
@@ -350,7 +428,7 @@ app.put("/update-product", authorizeAccessToken, jwtScope('access:admin', option
   updateData(docRef, data);
 
   // status 201 is for POST & PUT requests
-  response.status(201).send({authorized: true, message: "Success"});
+  response.status(201).send({ success: true, authorized: true, message: "Success" });
 });
 
 // delete product with id
@@ -366,7 +444,7 @@ app.delete("/delete-product", authorizeAccessToken, jwtScope('access:admin', opt
   //delete product data from database
   deleteData(docRef);
 
-  response.status(200).send({authorized: true, message: "Success"});
+  response.status(200).send({ success: true, authorized: true, message: "Product data has been deleted from the database"});
 });
 
 // get product with id
@@ -392,7 +470,7 @@ app.get("/product/:id", async (request, response) => {
     return {error: error, message: "Error"};
   })
 
-  response.status(200).send({data: data, message: "Success"});
+  response.status(200).send({ success: true, data: data, message: "Product data has been retrieved" });
 });
 
 app.listen(PORT, () => console.log(`Server running ${PORT}`));

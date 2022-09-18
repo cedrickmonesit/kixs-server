@@ -320,20 +320,16 @@ let uploadProductImages = (request, id) => {
 // retrieve all uploaded URL images from firebase storage to store in the firestore database
 
 /*
-  function retrieve signed image URL
+  function retrieve image URL
   @param {string} fileName
-  @return {Promise} returns a signedURL promise
+  @return {Promise} returns a URL promise
 */
-  let generateV4ReadSignedUrl = (fileName) => {
+  let generateUrl = (fileName) => {
     console.log(fileName);
-    return new Promise(async (resolve) => {
-      const options = {
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + 60 * 60 * 1000, // 15 minutes
-      };
-      const [signedUrl] = await storage.bucket(bucket.name).file(fileName).getSignedUrl(options);
-      resolve(signedUrl);
+    return new Promise((resolve) => {
+      const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${fileName}?alt=media`;
+      console.log(url);
+      resolve(url);
     }).catch((err) => {
       console.log(err);
     });
@@ -345,13 +341,13 @@ let uploadProductImages = (request, id) => {
   @param {Array} image files from the request.files
   @return {Array} returns an array of promises
 */
-  let generateSignedUrlArray = (id, images) => {
-    let signedUrls = [];
+  let generateUrlArray = (id, images) => {
+    let urls = [];
     for(let i = 0; i < images.length; i++){
-      signedUrls.push(generateV4ReadSignedUrl(`${id}_image-${i}`));
+      urls.push(generateUrl(`${id}_image-${i}`));
     };
 
-    return signedUrls;
+    return urls;
   }
 
 
@@ -377,8 +373,8 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   uploadProductImages(request, productId);
 
   //generate image url array to store in the firestore database
-  const signedUrls = generateSignedUrlArray(productId, request.files);
-
+  const urls = generateUrlArray(productId, request.files);
+console.log(urls);
  /*
     send product data to firestore database
     @param {Array} image urls array
@@ -401,9 +397,9 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
     response.status(201).send({ success: true, authorized: true, message: "Product data was sent to the database"});
   }
 
-  // handle the array of promises for the product image signed URLS
-  Promise.all(signedUrls).then((urls) => {
-    sendProductData(urls);
+  // handle the array of promises for the product image URLS
+  Promise.all(urls).then((imageUrls) => {
+    sendProductData(imageUrls);
   }) // handle promise reject
   .catch((error) => {
     console.log(error);

@@ -269,8 +269,8 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
 });
 
 // get all products
-app.get("/products", authorizeAccessToken, async (request, response) => {
-  const snapshot = await db.collection('products').get()
+app.get("/products", async (request, response) => {
+  const snapshot = await db.collection('products').get();
   const products = snapshot.docs.map(doc => doc.data());
 
   // status 200 request successful

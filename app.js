@@ -223,19 +223,24 @@ app.post("/favorites/add-product/:id", authorizeAccessToken, async (request, res
     if(!favorites.products.includes(productId)){
       // add product id to favorites list
       favorites.products.push(productId);
+
+      // favorites data to be sent to the firestore database
+      const data = {
+        // destructure favorites list
+        products: [...favorites.products]
+      };
+
+      // update favorites list with favorites list
+      updateData(docRef, data);
+
+      // status 201 new resource was created
+      response.status(201).json({ success: true, message: "Product was added to the user's favorites list" });
+    }else{
+      // status 200 request successful
+      response.status(201).json({ success: false, message: "Product is already in the user's favorites list" });
     }
 
-    // favorites data to be sent to the firestore database
-    const data = {
-      // destructure favorites list
-      products: [...favorites.products]
-    };
 
-    // update favorites list with favorites list
-    updateData(docRef, data);
-
-    // status 201 new resource was created
-    response.status(201).json({ success: true, message: "Product was added to the user's favorites list" });
   }else {
     //status 409 conflict
     response.status(409).json({...favorites});

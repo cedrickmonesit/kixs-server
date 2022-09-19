@@ -504,17 +504,16 @@ app.get("/product/:id", async (request, response) => {
 });
 
 // get list of products
-app.get("/products/list", async (request, response) => {
+app.post("/products/list", (request, response) => {
   // using product ids get products from database
   const productList = request.body.productList;
 
-  //docRef
-  const docRef = db.collection('products')
+  // docRef
+  const docRef = db.collection('products');
 
-  // Array.map() returns a new array with all the products
+  // Array.map() returns array with all the product data
   // products will be an array of promises containing all the product data
   const products = productList.map(async (productId) => {
-
     // function getData()
     // @returns {Promise} returns a promise that has the product data
     return data = await getData(docRef.doc(productId));
@@ -531,6 +530,8 @@ app.get("/products/list", async (request, response) => {
   .catch((error) => {
     response.status(200).send({ success: false, error: error, message: "Failed to retrieve product list" });
   });
+
+
 });
 
 app.listen(PORT, () => console.log(`Server running ${PORT}`));

@@ -503,4 +503,30 @@ app.get("/product/:id", async (request, response) => {
   response.status(200).send({ success: true, data: data, message: "Product data has been retrieved" });
 });
 
+// get list of products
+app.get("/products/:list", async (request, response) => {
+  // using product ids get products from database
+  const productList = request.params.product_list
+
+  //docRef
+  const docRef = db.collection('products')
+
+  // Array.map() returns a new array with all the products
+  const products = productList.map(async (productId) => {
+    return data = await getData(docRef.doc(productId))
+    .then((data) => {
+      //product data
+      return data;
+    })
+    //handles rejected promise
+    .catch((error) => {
+      console.log(error);
+      return;
+    })
+  });
+  
+
+  response.status(200).send({ success: true, products: products, message: "Product list has been retrieved" });
+});
+
 app.listen(PORT, () => console.log(`Server running ${PORT}`));

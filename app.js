@@ -357,13 +357,24 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   const product = request.body;
 
   //product name
-  const productName = product.name;
+  const primaryName = product.primary_name;
+
+  const secondaryName = product.secondary_name;
 
   //product variant
-  const productVariant = product.variant;
+  const variant = product.variant;
 
   //product msrp
-  const productMsrp = product.msrp;
+  const msrp = product.msrp;
+
+  //product release date
+  const releaseDate = product.release_date;
+
+  //product colorway
+  const colorway = product.colorway;
+
+  // product description
+  const description = product.description;
 
   //product ID
   //creates unique product ID string
@@ -382,9 +393,13 @@ console.log(urls);
   let sendProductData = (urls = []) => {
     //product data
     const data = {
-      name: `${productName}`,
-      variant: `${productVariant}`,
-      msrp: productMsrp,
+      primaryName: `${primaryName}`,
+      secondaryName: `${secondaryName}`,
+      description: `${description}`,
+      releaseDate: `${releaseDate}`,
+      variant: `${variant}`,
+      colorway: `${colorway}`,
+      msrp: msrp,
       id: `${productId}`,
       images: [...urls]
     };

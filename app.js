@@ -504,29 +504,33 @@ app.get("/product/:id", async (request, response) => {
 });
 
 // get list of products
-app.get("/products/:list", async (request, response) => {
+app.get("/products/list", async (request, response) => {
   // using product ids get products from database
-  const productList = request.params.product_list
+  const productList = request.body.productList;
 
   //docRef
   const docRef = db.collection('products')
 
   // Array.map() returns a new array with all the products
+  // products will be an array of promises containing all the product data
   const products = productList.map(async (productId) => {
-    return data = await getData(docRef.doc(productId))
-    .then((data) => {
-      //product data
-      return data;
-    })
-    //handles rejected promise
-    .catch((error) => {
-      console.log(error);
-      return;
-    })
-  });
-  
 
-  response.status(200).send({ success: true, products: products, message: "Product list has been retrieved" });
+    // function getData()
+    // @returns {Promise} returns a promise that has the product data
+    return data = await getData(docRef.doc(productId));
+  });
+
+  // handle products array of Promises
+  Promise.all(products)
+  // handle resolve
+  .then((data) => {
+    // product data
+    response.status(200).send({ success: true, products: data, message: "Product list has been retrieved" });
+  })
+  // handle reject
+  .catch((error) => {
+    response.status(200).send({ success: false, error: error, message: "Failed to retrieve product list" });
+  });
 });
 
 app.listen(PORT, () => console.log(`Server running ${PORT}`));

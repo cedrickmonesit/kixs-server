@@ -200,14 +200,14 @@ app.post("/add-user", authorizeAccessToken, (request, response) => {
 });
 
 app.post(
-  "/favorites/add-product/:id",
+  "/favorites/add-product",
   authorizeAccessToken,
   async (request, response) => {
     // Auth0 user sub id used for querying and sending data to database
     const subId = request.auth.sub.split("|").pop();
 
     // product id that will be added to the favorites list
-    const productId = request.params.id;
+    const productId = request.body.id;
 
     // referencing document with user subId that contains user favorites list
     const docRef = db.collection("users").doc(subId);
@@ -216,7 +216,7 @@ app.post(
     const favorites = await getData(docRef)
       .then((data) => {
         // favorites list
-        return { success: true, products: [...data.products] };
+        return { success: true, products: data.products };
       })
       //handles rejected promise
       .catch((error) => {
@@ -234,7 +234,7 @@ app.post(
         // favorites data to be sent to the firestore database
         const data = {
           // destructure favorites list
-          products: [...favorites.products],
+          products: favorites.products,
         };
 
         // update favorites list with favorites list
@@ -250,6 +250,70 @@ app.post(
         response.status(201).json({
           success: false,
           message: "Product is already in the user's favorites list",
+        });
+      }
+    } else {
+      //status 409 conflict
+      response.status(409).json(favorites);
+    }
+  },
+);
+
+app.delete(
+  "/favorites/remove-product",
+  authorizeAccessToken,
+  async (request, response) => {
+    // Auth0 user sub id used for querying and sending data to database
+    const subId = request.auth.sub.split("|").pop();
+
+    // product id that will be added to the favorites list
+    const productId = request.body.id;
+
+    // referencing document with user subId that contains user favorites list
+    const docRef = db.collection("users").doc(subId);
+
+    // retrieve user's favorites list
+    const favorites = await getData(docRef)
+      .then((data) => {
+        // favorites list
+        return { success: true, products: data.products };
+      })
+      //handles rejected promise
+      .catch((error) => {
+        //error message
+        return { success: false, error: error, message: "Error" };
+      });
+
+    //check if retrieval of the favorites list was successful
+    if (favorites.success) {
+      // check if product is not in the favorites list
+      if (favorites.products.includes(productId)) {
+        // remove product id to favorites list
+        const newFavorites = [];
+        favorites.products.forEach((product) => {
+          if (productId != product) {
+            newFavorites.push(product);
+          }
+        });
+        // favorites data to be sent to the firestore database
+        const data = {
+          // destructure favorites list
+          products: newFavorites,
+        };
+
+        // update favorites list with favorites list
+        updateData(docRef, data);
+
+        // status 201 new resource was created
+        response.status(201).json({
+          success: true,
+          message: "Product was removed from the user's favorites list",
+        });
+      } else {
+        // status 200 request successful
+        response.status(201).json({
+          success: false,
+          message: "Product is not in the user's favorites list",
         });
       }
     } else {
@@ -271,7 +335,6 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
   await getData(docRef)
     // favorites list
     .then((data) => {
-      console.log(data);
       // using product ids get products from database
       const productList = [...data.products];
 

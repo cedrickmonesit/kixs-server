@@ -268,7 +268,7 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
   const docRef = db.collection("users").doc(subId);
 
   // retrieve user's favorites list
-  const favorites = await getData(docRef)
+  await getData(docRef)
     // favorites list
     .then((data) => {
       console.log(data);
@@ -539,13 +539,33 @@ app.delete(
 
     const docRef = db.collection("products").doc(productId);
 
+    async function deleteFile(index) {
+      let fileName = `${productId}_image-${index}`;
+      await bucket.file(fileName).delete();
+
+      console.log(`${fileName} deleted`);
+    }
+
+    getData(docRef)
+      .then((data) => {
+        const images = data.images;
+        images.forEach((image, index) => {
+          deleteFile(index).catch((error) => {
+            console.log(error);
+          });
+        });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+
     //delete product data from database
     deleteData(docRef);
 
     response.status(200).send({
       success: true,
       authorized: true,
-      message: "Product data has been deleted from the database",
+      message: "Product data and image has been deleted from the database",
     });
   },
 );

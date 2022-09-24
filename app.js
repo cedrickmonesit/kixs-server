@@ -5,7 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
-const app = express();
+const app = express({ origin: "http://localhost:3000" });
 
 // api security
 const { expressjwt: jwt } = require("express-jwt");
@@ -77,7 +77,7 @@ app.get("/", (request, response) => {
   //response.status(200).json({ members: members }); // chaining two methods to the response object the first method status sends the status code of 200 meaning it was successful. The status method is not required but it's good practice to use it so the client can be able to show a different UI to the user for better UX.
   // the second method in the chain is json defines the data format sending back to our client. We are sending a JSON object.
 
-  response.send(ads);
+  response.json(ads);
 });
 
 //middle ware to check and authorize access token from the request made by the frontend application
@@ -354,7 +354,7 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
         // handle resolve
         .then((data) => {
           // product data
-          response.status(200).send({
+          response.status(200).json({
             success: true,
             products: data,
             message: "Product list has been retrieved",
@@ -362,7 +362,7 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
         })
         // handle reject
         .catch((error) => {
-          response.status(200).send({
+          response.status(200).json({
             success: false,
             error: error,
             message: "Failed to retrieve product list",
@@ -385,6 +385,20 @@ app.get("/products", async (request, response) => {
   response.status(200).json({ success: true, products: [...products] });
 });
 
+// get all products
+app.get("/products/:value", async (request, response) => {
+  const value = request.params.value;
+
+  const snapshot = await db
+    .collection("products")
+    .where(`${value}`, "=", "Jordan 1 Retro")
+    .get();
+
+  const products = snapshot.docs.map((doc) => doc.data());
+
+  // status 200 request successful
+  response.status(200).json({ success: true, products: [...products] });
+});
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
 app.get(
   "/authorization",
@@ -524,7 +538,7 @@ app.post(
       sendData(docRef, data);
 
       // status 201 is for POST & PUT requests
-      response.status(201).send({
+      response.status(201).json({
         success: true,
         authorized: true,
         message: "Product data was sent to the database",
@@ -538,7 +552,7 @@ app.post(
       }) // handle promise reject
       .catch((error) => {
         console.log(error);
-        response.status(201).send({
+        response.status(201).json({
           success: false,
           authorized: true,
           message: "Product data was not sent to the database",
@@ -584,7 +598,7 @@ app.put(
     // status 201 is for POST & PUT requests
     response
       .status(201)
-      .send({ success: true, authorized: true, message: "Success" });
+      .json({ success: true, authorized: true, message: "Success" });
   },
 );
 
@@ -625,7 +639,7 @@ app.delete(
     //delete product data from database
     deleteData(docRef);
 
-    response.status(200).send({
+    response.status(200).json({
       success: true,
       authorized: true,
       message: "Product data and image has been deleted from the database",
@@ -634,7 +648,7 @@ app.delete(
 );
 
 // get product with id
-app.get("/product/:id", async (request, response) => {
+app.get("/products/:id", async (request, response) => {
   // using product id get product from database
   const productId = request.params.id;
 
@@ -656,14 +670,14 @@ app.get("/product/:id", async (request, response) => {
       return { error: error, message: "Error" };
     });
 
-  response.status(200).send({
+  response.status(200).json({
     success: true,
     data: data,
     message: "Product data has been retrieved",
   });
 });
 
-// get list of products
+// list of products in favorites list
 app.post("/products/list", (request, response) => {
   // using product ids get products from database
   const productList = request.body.productList;
@@ -684,7 +698,7 @@ app.post("/products/list", (request, response) => {
     // handle resolve
     .then((data) => {
       // product data
-      response.status(200).send({
+      response.status(200).json({
         success: true,
         products: data,
         message: "Product list has been retrieved",
@@ -692,7 +706,7 @@ app.post("/products/list", (request, response) => {
     })
     // handle reject
     .catch((error) => {
-      response.status(200).send({
+      response.status(200).json({
         success: false,
         error: error,
         message: "Failed to retrieve product list",

@@ -15,17 +15,9 @@ const jwksRsa = require("jwks-rsa");
 
 const jwtScope = require("express-jwt-scope"); // makes it easy to setup scope and check them with middleware
 
-const {
-  initializeApp,
-  applicationDefault,
-  cert,
-} = require("firebase-admin/app");
+const { initializeApp, applicationDefault, cert } = require("firebase-admin/app");
 
-const {
-  getFirestore,
-  Timestamp,
-  FieldValue,
-} = require("firebase-admin/firestore");
+const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 
 //google cloud storage
 const { Storage } = require("@google-cloud/storage");
@@ -194,134 +186,124 @@ app.post("/add-user", authorizeAccessToken, (request, response) => {
   sendData(docRef, data);
 
   // status 201 new resource was created
-  response
-    .status(201)
-    .json({ success: true, message: "User was added to the database" });
+  response.status(201).json({ success: true, message: "User was added to the database" });
 });
 
-app.post(
-  "/favorites/add-product",
-  authorizeAccessToken,
-  async (request, response) => {
-    // Auth0 user sub id used for querying and sending data to database
-    const subId = request.auth.sub.split("|").pop();
+app.post("/favorites/add-product", authorizeAccessToken, async (request, response) => {
+  // Auth0 user sub id used for querying and sending data to database
+  const subId = request.auth.sub.split("|").pop();
 
-    // product id that will be added to the favorites list
-    const productId = request.body.id;
+  // product id that will be added to the favorites list
+  const productId = request.body.id;
 
-    // referencing document with user subId that contains user favorites list
-    const docRef = db.collection("users").doc(subId);
+  // referencing document with user subId that contains user favorites list
+  const docRef = db.collection("users").doc(subId);
 
-    // retrieve user's favorites list
-    const favorites = await getData(docRef)
-      .then((data) => {
-        // favorites list
-        return { success: true, products: data.products };
-      })
-      //handles rejected promise
-      .catch((error) => {
-        //error message
-        return { success: false, error: error, message: "Error" };
+  // retrieve user's favorites list
+  const favorites = await getData(docRef)
+    .then((data) => {
+      // favorites list
+      return { success: true, products: data.products };
+    })
+    //handles rejected promise
+    .catch((error) => {
+      //error message
+      return { success: false, error: error, message: "Error" };
+    });
+
+  //check if retrieval of the favorites list was successful
+  if (favorites.success) {
+    // check if product is not in the favorites list
+    if (!favorites.products.includes(productId)) {
+      // add product id to favorites list
+      favorites.products.push(productId);
+
+      // favorites data to be sent to the firestore database
+      const data = {
+        // destructure favorites list
+        products: favorites.products,
+      };
+
+      // update favorites list with favorites list
+      updateData(docRef, data);
+
+      // status 201 new resource was created
+      response.status(201).json({
+        success: true,
+        message: "Product was added to the user's favorites list",
       });
-
-    //check if retrieval of the favorites list was successful
-    if (favorites.success) {
-      // check if product is not in the favorites list
-      if (!favorites.products.includes(productId)) {
-        // add product id to favorites list
-        favorites.products.push(productId);
-
-        // favorites data to be sent to the firestore database
-        const data = {
-          // destructure favorites list
-          products: favorites.products,
-        };
-
-        // update favorites list with favorites list
-        updateData(docRef, data);
-
-        // status 201 new resource was created
-        response.status(201).json({
-          success: true,
-          message: "Product was added to the user's favorites list",
-        });
-      } else {
-        // status 200 request successful
-        response.status(201).json({
-          success: false,
-          message: "Product is already in the user's favorites list",
-        });
-      }
     } else {
-      //status 409 conflict
-      response.status(409).json(favorites);
-    }
-  },
-);
-
-app.delete(
-  "/favorites/remove-product",
-  authorizeAccessToken,
-  async (request, response) => {
-    // Auth0 user sub id used for querying and sending data to database
-    const subId = request.auth.sub.split("|").pop();
-
-    // product id that will be added to the favorites list
-    const productId = request.body.id;
-
-    // referencing document with user subId that contains user favorites list
-    const docRef = db.collection("users").doc(subId);
-
-    // retrieve user's favorites list
-    const favorites = await getData(docRef)
-      .then((data) => {
-        // favorites list
-        return { success: true, products: data.products };
-      })
-      //handles rejected promise
-      .catch((error) => {
-        //error message
-        return { success: false, error: error, message: "Error" };
+      // status 200 request successful
+      response.status(201).json({
+        success: false,
+        message: "Product is already in the user's favorites list",
       });
-
-    //check if retrieval of the favorites list was successful
-    if (favorites.success) {
-      // check if product is not in the favorites list
-      if (favorites.products.includes(productId)) {
-        // remove product id to favorites list
-        const newFavorites = [];
-        favorites.products.forEach((product) => {
-          if (productId != product) {
-            newFavorites.push(product);
-          }
-        });
-        // favorites data to be sent to the firestore database
-        const data = {
-          // destructure favorites list
-          products: newFavorites,
-        };
-
-        // update favorites list with favorites list
-        updateData(docRef, data);
-
-        // status 201 new resource was created
-        response.status(201).json({
-          success: true,
-          message: "Product was removed from the user's favorites list",
-        });
-      } else {
-        // status 200 request successful
-        response.status(201).json({
-          success: false,
-          message: "Product is not in the user's favorites list",
-        });
-      }
-    } else {
-      //status 409 conflict
-      response.status(409).json({ ...favorites });
     }
-  },
-);
+  } else {
+    //status 409 conflict
+    response.status(409).json(favorites);
+  }
+});
+
+app.delete("/favorites/remove-product", authorizeAccessToken, async (request, response) => {
+  // Auth0 user sub id used for querying and sending data to database
+  const subId = request.auth.sub.split("|").pop();
+
+  // product id that will be added to the favorites list
+  const productId = request.body.id;
+
+  // referencing document with user subId that contains user favorites list
+  const docRef = db.collection("users").doc(subId);
+
+  // retrieve user's favorites list
+  const favorites = await getData(docRef)
+    .then((data) => {
+      // favorites list
+      return { success: true, products: data.products };
+    })
+    //handles rejected promise
+    .catch((error) => {
+      //error message
+      return { success: false, error: error, message: "Error" };
+    });
+
+  //check if retrieval of the favorites list was successful
+  if (favorites.success) {
+    // check if product is not in the favorites list
+    if (favorites.products.includes(productId)) {
+      // remove product id to favorites list
+      const newFavorites = [];
+      favorites.products.forEach((product) => {
+        if (productId != product) {
+          newFavorites.push(product);
+        }
+      });
+      // favorites data to be sent to the firestore database
+      const data = {
+        // destructure favorites list
+        products: newFavorites,
+      };
+
+      // update favorites list with favorites list
+      updateData(docRef, data);
+
+      // status 201 new resource was created
+      response.status(201).json({
+        success: true,
+        message: "Product was removed from the user's favorites list",
+      });
+    } else {
+      // status 200 request successful
+      response.status(201).json({
+        success: false,
+        message: "Product is not in the user's favorites list",
+      });
+    }
+  } else {
+    //status 409 conflict
+    response.status(409).json({ ...favorites });
+  }
+});
 
 // get user's favorites list
 app.get("/favorites", authorizeAccessToken, async (request, response) => {
@@ -385,34 +367,26 @@ app.get("/products", async (request, response) => {
   response.status(200).json({ success: true, products: [...products] });
 });
 
-// get all products
-app.get("/products/:value", async (request, response) => {
-  const value = request.params.value;
+app.get("/products/search/:value", async (request, response) => {
+  const param = request.params.value;
+  var value = param.replace(/-/g, " ");
 
   const snapshot = await db
     .collection("products")
-    .where(`${value}`, "=", "Jordan 1 Retro")
+    .where("primaryName", ">=", value)
+    .where("primaryName", "<=", value + "z")
     .get();
-
   const products = snapshot.docs.map((doc) => doc.data());
-
   // status 200 request successful
   response.status(200).json({ success: true, products: [...products] });
 });
 // jwtScope middleware checks if the headers for the property Authorization which has the accessToken. The access token has a property called "permissions" which has the role/permissions for the signed in user in the frontend.
-app.get(
-  "/authorization",
-  authorizeAccessToken,
-  jwtScope("access:admin", options),
-  (request, response) => {
-    // send response back to frontend that the user has permission to access this endpoint
-    // React frontend will handle the response from the backend to give user access to the role based route mounting the component
-    // status 200 is for GET requests
-    response
-      .status(200)
-      .json({ success: true, authorized: true, message: "Authorized" });
-  },
-);
+app.get("/authorization", authorizeAccessToken, jwtScope("access:admin", options), (request, response) => {
+  // send response back to frontend that the user has permission to access this endpoint
+  // React frontend will handle the response from the backend to give user access to the role based route mounting the component
+  // status 200 is for GET requests
+  response.status(200).json({ success: true, authorized: true, message: "Authorized" });
+});
 
 /*
   function uploads product images
@@ -477,175 +451,157 @@ let generateUrlArray = (id, images) => {
 };
 
 // save product data
-app.post(
-  "/save-product",
-  authorizeAccessToken,
-  jwtScope("access:admin", options),
-  multer.array("images", 5),
-  (request, response) => {
-    const product = request.body;
+app.post("/save-product", authorizeAccessToken, jwtScope("access:admin", options), multer.array("images", 5), (request, response) => {
+  const product = request.body;
 
-    //product name
-    const primaryName = product.primaryName;
+  //product name
+  const primaryName = product.primaryName;
 
-    const secondaryName = product.secondaryName;
+  const secondaryName = product.secondaryName;
 
-    //product variant
-    const variant = product.variant;
+  //product variant
+  const variant = product.variant;
 
-    //product msrp
-    const msrp = product.msrp;
+  //product msrp
+  const msrp = product.msrp;
 
-    //product release date
-    const releaseDate = product.releaseDate;
+  //product release date
+  const releaseDate = product.releaseDate;
 
-    //product colorway
-    const colorway = product.colorway;
+  //product colorway
+  const colorway = product.colorway;
 
-    // product description
-    const description = product.description;
+  // product description
+  const description = product.description;
 
-    //product ID
-    //creates unique product ID string
-    const productId = Math.random().toString(36).substring(7);
+  //product ID
+  //creates unique product ID string
+  const productId = Math.random().toString(36).substring(7);
 
-    //upload product images from request to firebase storage
-    uploadProductImages(request, productId);
+  //upload product images from request to firebase storage
+  uploadProductImages(request, productId);
 
-    //generate image url array to store in the firestore database
-    const urls = generateUrlArray(productId, request.files);
-    console.log(urls);
-    /*
+  //generate image url array to store in the firestore database
+  const urls = generateUrlArray(productId, request.files);
+  console.log(urls);
+  /*
      send product data to firestore database
      @param {Array} image urls array
    */
-    let sendProductData = (urls = []) => {
-      //product data
-      const data = {
-        primaryName: `${primaryName}`,
-        secondaryName: `${secondaryName}`,
-        description: `${description}`,
-        releaseDate: `${releaseDate}`,
-        variant: `${variant}`,
-        colorway: `${colorway}`,
-        msrp: msrp,
-        id: `${productId}`,
-        images: [...urls],
-      };
-
-      const docRef = db.collection("products").doc(productId);
-
-      sendData(docRef, data);
-
-      // status 201 is for POST & PUT requests
-      response.status(201).json({
-        success: true,
-        authorized: true,
-        message: "Product data was sent to the database",
-      });
-    };
-
-    // handle the array of promises for the product image URLS
-    Promise.all(urls)
-      .then((imageUrls) => {
-        sendProductData(imageUrls);
-      }) // handle promise reject
-      .catch((error) => {
-        console.log(error);
-        response.status(201).json({
-          success: false,
-          authorized: true,
-          message: "Product data was not sent to the database",
-          error: error,
-        });
-      });
-  },
-);
-
-// update product data
-app.put(
-  "/update-product",
-  authorizeAccessToken,
-  jwtScope("access:admin", options),
-  (request, response) => {
-    //update product data in database
-    const product = request.body;
-
-    //product name
-    const productName = product.name;
-
-    //product variant
-    const productVariant = product.variant;
-
-    //product msrp
-    const productMsrp = product.msrp;
-
-    //product ID
-    const productId = product.id;
-
-    //update product data in database
+  let sendProductData = (urls = []) => {
     //product data
     const data = {
-      name: `${productName}`,
-      variant: `${productVariant}`,
-      msrp: productMsrp,
+      primaryName: `${primaryName}`,
+      secondaryName: `${secondaryName}`,
+      description: `${description}`,
+      releaseDate: `${releaseDate}`,
+      variant: `${variant}`,
+      colorway: `${colorway}`,
+      msrp: msrp,
+      id: `${productId}`,
+      images: [...urls],
     };
 
     const docRef = db.collection("products").doc(productId);
 
-    updateData(docRef, data);
+    sendData(docRef, data);
 
     // status 201 is for POST & PUT requests
-    response
-      .status(201)
-      .json({ success: true, authorized: true, message: "Success" });
-  },
-);
-
-// delete product with id
-app.delete(
-  "/delete-product",
-  authorizeAccessToken,
-  jwtScope("access:admin", options),
-  (request, response) => {
-    //product
-    const product = request.body;
-
-    //product ID
-    const productId = product.id;
-
-    const docRef = db.collection("products").doc(productId);
-
-    async function deleteFile(index) {
-      let fileName = `${productId}_image-${index}`;
-      await bucket.file(fileName).delete();
-
-      console.log(`${fileName} deleted`);
-    }
-
-    getData(docRef)
-      .then((data) => {
-        const images = data.images;
-        images.forEach((image, index) => {
-          deleteFile(index).catch((error) => {
-            console.log(error);
-          });
-        });
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-
-    //delete product data from database
-    deleteData(docRef);
-
-    response.status(200).json({
+    response.status(201).json({
       success: true,
       authorized: true,
-      message: "Product data and image has been deleted from the database",
+      message: "Product data was sent to the database",
     });
-  },
-);
+  };
+
+  // handle the array of promises for the product image URLS
+  Promise.all(urls)
+    .then((imageUrls) => {
+      sendProductData(imageUrls);
+    }) // handle promise reject
+    .catch((error) => {
+      console.log(error);
+      response.status(201).json({
+        success: false,
+        authorized: true,
+        message: "Product data was not sent to the database",
+        error: error,
+      });
+    });
+});
+
+// update product data
+app.put("/update-product", authorizeAccessToken, jwtScope("access:admin", options), (request, response) => {
+  //update product data in database
+  const product = request.body;
+
+  //product name
+  const productName = product.name;
+
+  //product variant
+  const productVariant = product.variant;
+
+  //product msrp
+  const productMsrp = product.msrp;
+
+  //product ID
+  const productId = product.id;
+
+  //update product data in database
+  //product data
+  const data = {
+    name: `${productName}`,
+    variant: `${productVariant}`,
+    msrp: productMsrp,
+  };
+
+  const docRef = db.collection("products").doc(productId);
+
+  updateData(docRef, data);
+
+  // status 201 is for POST & PUT requests
+  response.status(201).json({ success: true, authorized: true, message: "Success" });
+});
+
+// delete product with id
+app.delete("/delete-product", authorizeAccessToken, jwtScope("access:admin", options), (request, response) => {
+  //product
+  const product = request.body;
+
+  //product ID
+  const productId = product.id;
+
+  const docRef = db.collection("products").doc(productId);
+
+  async function deleteFile(index) {
+    let fileName = `${productId}_image-${index}`;
+    await bucket.file(fileName).delete();
+
+    console.log(`${fileName} deleted`);
+  }
+
+  getData(docRef)
+    .then((data) => {
+      const images = data.images;
+      images.forEach((image, index) => {
+        deleteFile(index).catch((error) => {
+          console.log(error);
+        });
+      });
+    })
+    .catch((error) => {
+      console.log(error);
+    });
+
+  //delete product data from database
+  deleteData(docRef);
+
+  response.status(200).json({
+    success: true,
+    authorized: true,
+    message: "Product data and image has been deleted from the database",
+  });
+});
 
 // get product with id
 app.get("/products/:id", async (request, response) => {

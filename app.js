@@ -223,19 +223,24 @@ app.post("/favorites/add-product/:id", authorizeAccessToken, async (request, res
     if(!favorites.products.includes(productId)){
       // add product id to favorites list
       favorites.products.push(productId);
+
+      // favorites data to be sent to the firestore database
+      const data = {
+        // destructure favorites list
+        products: [...favorites.products]
+      };
+
+      // update favorites list with favorites list
+      updateData(docRef, data);
+
+      // status 201 new resource was created
+      response.status(201).json({ success: true, message: "Product was added to the user's favorites list" });
+    }else{
+      // status 200 request successful
+      response.status(201).json({ success: false, message: "Product is already in the user's favorites list" });
     }
 
-    // favorites data to be sent to the firestore database
-    const data = {
-      // destructure favorites list
-      products: [...favorites.products]
-    };
 
-    // update favorites list with favorites list
-    updateData(docRef, data);
-
-    // status 201 new resource was created
-    response.status(201).json({ success: true, message: "Product was added to the user's favorites list" });
   }else {
     //status 409 conflict
     response.status(409).json({...favorites});
@@ -357,13 +362,24 @@ app.post("/save-product", authorizeAccessToken, jwtScope('access:admin', options
   const product = request.body;
 
   //product name
-  const productName = product.name;
+  const primaryName = product.primary_name;
+
+  const secondaryName = product.secondary_name;
 
   //product variant
-  const productVariant = product.variant;
+  const variant = product.variant;
 
   //product msrp
-  const productMsrp = product.msrp;
+  const msrp = product.msrp;
+
+  //product release date
+  const releaseDate = product.release_date;
+
+  //product colorway
+  const colorway = product.colorway;
+
+  // product description
+  const description = product.description;
 
   //product ID
   //creates unique product ID string
@@ -382,9 +398,13 @@ console.log(urls);
   let sendProductData = (urls = []) => {
     //product data
     const data = {
-      name: `${productName}`,
-      variant: `${productVariant}`,
-      msrp: productMsrp,
+      primaryName: `${primaryName}`,
+      secondaryName: `${secondaryName}`,
+      description: `${description}`,
+      releaseDate: `${releaseDate}`,
+      variant: `${variant}`,
+      colorway: `${colorway}`,
+      msrp: msrp,
       id: `${productId}`,
       images: [...urls]
     };

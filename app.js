@@ -4,7 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
-const app = express({ origin: "*" });
+const app = express({ origin: "http://localhost:3000" });
 
 // api security
 const { expressjwt: jwt } = require("express-jwt");

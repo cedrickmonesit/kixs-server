@@ -63,7 +63,7 @@ const multer = Multer({
   },
 });
 
-const port = process.env.PORT || 80; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
+const PORT = process.env.PORT || 5000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
 const ads = [{ title: "Hello, world!" }];
 
@@ -685,4 +685,4 @@ app.post("/products/list", (request, response) => {
     });
 });
 
-app.listen(port, () => console.log(`Server running ${port}`));
+app.listen(PORT, () => console.log(`Server running ${PORT}`));

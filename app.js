@@ -36,7 +36,7 @@ initializeApp({
 // initialize firebase storage
 const storage = new Storage({
   projectId: process.env.FIREBASE_PROJECT_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY,
+  private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
 });
 
 const db = getFirestore();

@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -68,7 +69,7 @@ app.get("/", (request, response) => {
   //response.status(200).json({ members: members }); // chaining two methods to the response object the first method status sends the status code of 200 meaning it was successful. The status method is not required but it's good practice to use it so the client can be able to show a different UI to the user for better UX.
   // the second method in the chain is json defines the data format sending back to our client. We are sending a JSON object.
 
-  response.json(ads);
+  response.json("Success");
 });
 
 //middle ware to check and authorize access token from the request made by the frontend application
@@ -598,7 +599,7 @@ app.delete("/delete-product", authorizeAccessToken, jwtScope("access:admin", opt
   response.status(200).json({
     success: true,
     authorized: true,
-    message: "Product data and image has been deleted from the database",
+    message: "Product data and images have been deleted from the database",
   });
 });
 

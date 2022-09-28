@@ -24,8 +24,6 @@ const { Storage } = require("@google-cloud/storage");
 // multer
 const Multer = require("multer");
 
-const serviceAccount = process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH; // service account for firestore athentication access
-
 // initialize firestore
 initializeApp({
   credential: cert({

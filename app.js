@@ -26,8 +26,24 @@ const Multer = require("multer");
 
 // initialize firestore
 initializeApp({
-  credential: cert({
-    type: "service_account",
+  credential: cert(
+    JSON.stringify({
+      project_id: "kixs-1d4f3",
+      private_key_id: "6c9829937305027d54eac286a069e46b511410c9",
+      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
+      client_email: "firebase-adminsdk-2u33w@kixs-1d4f3.iam.gserviceaccount.com",
+      client_id: "100303831849452795178",
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-2u33w%40kixs-1d4f3.iam.gserviceaccount.com",
+    }),
+  ),
+});
+
+// initialize firebase storage
+const storage = new Storage(
+  JSON.stringify({
     project_id: "kixs-1d4f3",
     private_key_id: "6c9829937305027d54eac286a069e46b511410c9",
     private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
@@ -38,21 +54,7 @@ initializeApp({
     auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
     client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-2u33w%40kixs-1d4f3.iam.gserviceaccount.com",
   }),
-});
-
-// initialize firebase storage
-const storage = new Storage({
-  type: "service_account",
-  project_id: "kixs-1d4f3",
-  private_key_id: "6c9829937305027d54eac286a069e46b511410c9",
-  private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
-  client_email: "firebase-adminsdk-2u33w@kixs-1d4f3.iam.gserviceaccount.com",
-  client_id: "100303831849452795178",
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-2u33w%40kixs-1d4f3.iam.gserviceaccount.com",
-});
+);
 
 const db = getFirestore();
 

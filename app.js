@@ -29,7 +29,7 @@ const serviceAccount = process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH; // servic
 // initialize firestore
 initializeApp({
   credential: cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
+    project_id: process.env.FIREBASE_PROJECT_ID,
     private_key: process.env.FIREBASE_PRIVATE_KEY,
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
   }),
@@ -37,8 +37,8 @@ initializeApp({
 
 // initialize firebase storage
 const storage = new Storage({
-  projectId: serviceAccount.project_id,
-  keyFilename: process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY,
 });
 
 const db = getFirestore();

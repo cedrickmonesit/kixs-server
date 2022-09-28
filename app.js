@@ -322,7 +322,7 @@ app.delete("/favorites/remove-product", authorizeAccessToken, async (request, re
 // get user's favorites list
 app.get("/favorites", authorizeAccessToken, async (request, response) => {
   // Auth0 user sub id used for querying and sending data to database
-  const subId = request.auth.sub.split("|").pop();
+  const subId = "100383781418495952079"; //request.auth.sub.split("|").pop();
   console.log(subId);
 
   // referencing document with user subId that contains user favorites list

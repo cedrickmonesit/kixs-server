@@ -26,23 +26,18 @@ const Multer = require("multer");
 
 // initialize firestore
 initializeApp({
-  credential: cert(
-    JSON.stringify({
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    }),
-  ),
-});
-
-// initialize firebase storage
-const storage = new Storage(
-  JSON.stringify({
-    projectId: process.env.FIREBASE_PROJECT_ID,
+  credential: cert({
+    project_id: process.env.FIREBASE_PROJECT_ID,
     private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
   }),
-);
+});
+
+// initialize firebase storage
+const storage = new Storage({
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
+});
 
 const db = getFirestore();
 

@@ -28,7 +28,11 @@ const serviceAccount = process.env.FIRESTORE_SERVICE_ACCOUNT_KEY_PATH; // servic
 
 // initialize firestore
 initializeApp({
-  credential: cert(serviceAccount),
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY,
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  }),
 });
 
 // initialize firebase storage

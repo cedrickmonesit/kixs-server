@@ -321,8 +321,7 @@ app.delete("/favorites/remove-product", authorizeAccessToken, async (request, re
 
 // get user's favorites list
 app.get("/favorites", authorizeAccessToken, async (request, response) => {
-  response.status(200).json({ success: true, message: "success" });
-  /* // Auth0 user sub id used for querying and sending data to database
+  // Auth0 user sub id used for querying and sending data to database
   const subId = request.auth.sub.split("|").pop();
   console.log(subId);
 
@@ -371,7 +370,7 @@ app.get("/favorites", authorizeAccessToken, async (request, response) => {
     .catch((error) => {
       // error message
       return { success: false, error: error, message: "Error" };
-    });*/
+    });
 });
 
 // get all products

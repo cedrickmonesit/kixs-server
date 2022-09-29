@@ -73,18 +73,7 @@ app.use(helmet()); // adding helmet to enhance API's security
 
 app.use(bodyParser.json()); // using bodyParser to parse JSON bodies into JS objects
 
-const allowedOrigins = ["http://localhost:3000/#/", "https://cedrickmonesit.github.io/kixs-client/#/"];
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-};
-
-app.use(cors(corsOptions)); // enabling CORS all request
+app.use(cors({ origin: "*" })); // enabling CORS all request
 
 app.use(morgan("combined")); // adding morgan to log HTTP requests
 

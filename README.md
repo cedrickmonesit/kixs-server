@@ -30,7 +30,7 @@ Download Node
 1. Clone the repo
 
 ```
-git clone https://github.com/cedrickmonesit/film-flix.git
+git clone https://github.com/cedrickmonesit/kixs-server.git
 ```
 
 2. Run npm install inside project root directory

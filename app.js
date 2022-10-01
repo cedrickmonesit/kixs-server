@@ -75,7 +75,7 @@ app.use(
   cors({
     allowedHeaders: ["Authorization", "Content-Type", "Accept", "Origin"], // you can change the headers
     exposedHeaders: ["authorization"], // you can change the headers
-    origin: ["https://cedrickmonesit.github.io", "http://localhost:3000"],
+    origin: "https://cedrickmonesit.github.io",
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,PATCH",
     credentials: true,
     preflightContinue: true,

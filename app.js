@@ -63,9 +63,7 @@ const multer = Multer({
   },
 });
 
-const PORT = process.env.PORT || 5000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
-
-const ads = [{ title: "Hello, world!" }];
+const PORT = process.env.PORT || 4000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
 app.use(express.json()); // allows us to use Express.js built in body parser
 
@@ -73,7 +71,16 @@ app.use(helmet()); // adding helmet to enhance API's security
 
 app.use(bodyParser.json()); // using bodyParser to parse JSON bodies into JS objects
 
-app.use(cors({ origin: "*" })); // enabling CORS all request
+app.use(
+  cors({
+    allowedHeaders: ["Authorization", "Content-Type", "Accept", "Origin"], // you can change the headers
+    exposedHeaders: ["authorization"], // you can change the headers
+    origin: "https://cedrickmonesit.github.io/kixs-client",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,PATCH",
+    credentials: true,
+    preflightContinue: true,
+  }),
+); // enabling CORS all request
 
 app.use(morgan("combined")); // adding morgan to log HTTP requests
 
@@ -83,7 +90,7 @@ app.get("/", (request, response) => {
   //response.status(200).json({ members: members }); // chaining two methods to the response object the first method status sends the status code of 200 meaning it was successful. The status method is not required but it's good practice to use it so the client can be able to show a different UI to the user for better UX.
   // the second method in the chain is json defines the data format sending back to our client. We are sending a JSON object.
 
-  response.json(ads);
+  response.json({ message: "Kixs API" });
 });
 
 //middle ware to check and authorize access token from the request made by the frontend application

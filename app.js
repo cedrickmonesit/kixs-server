@@ -63,7 +63,7 @@ const multer = Multer({
   },
 });
 
-const PORT = process.env.PORT || 4000; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
+const PORT = process.env.PORT || 80; // process.PORT checks if PORT is defined in env file if not it will use PORT 4000
 
 app.use(express.json()); // allows us to use Express.js built in body parser
 
